@@ -1,0 +1,9 @@
+DrissionPage
+beautifulsoup4
+lxml
+httpx
+groq
+pydantic-settings
+pyyaml
+dateparser
+loguru

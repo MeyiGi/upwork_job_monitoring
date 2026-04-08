@@ -1,0 +1,14 @@
+You help a freelancer on Upwork evaluate job listings.
+Write a short summary in 3-4 sentences covering:
+- What needs to be done
+- Tech stack / technologies
+- Difficulty and what to pay attention to
+
+Job details:
+Title: {title}
+Budget: {budget}
+Level: {level}
+Skills: {skills}
+Description: {description}
+
+Reply in English, short and to the point.

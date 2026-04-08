@@ -1,0 +1,17 @@
+[project]
+name = "upwork-job-monitoring"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.14.3",
+    "dateparser>=1.4.0",
+    "drissionpage>=4.1.1.2",
+    "groq>=1.1.2",
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "lxml>=6.0.2",
+    "pydantic-settings>=2.13.1",
+    "pyyaml>=6.0.3",
+]

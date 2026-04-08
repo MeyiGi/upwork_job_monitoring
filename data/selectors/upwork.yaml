@@ -1,0 +1,18 @@
+card: "section.air3-card-section"
+
+fields:
+  title:           "h3 a"
+  posted:          "[data-test='posted-on']"
+  contractor_tier: "[data-test='contractor-tier']"
+  job_type:        "[data-test='job-type']"
+  budget:          "[data-test='budget']"
+  description:     "[data-test='job-description-text']"
+  skills:          "[data-test='attr-item']"
+  proposals:       "[data-test='proposals']"
+  country:         "[data-test='client-country']"
+  client_spend:    "[data-test='formatted-amount']"
+
+budget_keywords:
+  hourly:     "Hourly"
+  fixed:      "Fixed-price"
+  hourly_sep: ":"

@@ -1,0 +1,15 @@
+services:
+  upwork-monitor:
+    build: .
+    container_name: upwork_monitor
+    restart: always          # автозапуск при старте компьютера
+    env_file:
+      - .env
+    volumes:
+      - ./cookies.json:/app/cookies.json   # монтируем куки
+      - ./data:/app/data                   # очередь и промпты
+      - ./logs:/app/logs                   # логи
+    # Нужно для DrissionPage (Chromium внутри Docker)
+    shm_size: "256mb"
+    security_opt:
+      - seccomp:unconfined
