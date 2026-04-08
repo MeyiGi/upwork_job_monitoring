@@ -27,6 +27,7 @@ class UpworkScraper(ScraperPort):
     def scrape(self, url: str, source: str) -> List[Job]:
         html   = self._fetcher.fetch(url)
         cards  = self._extractor.extract(html)
+        len(cards)
         jobs   = [self._mapper.map(c, source) for c in cards]
         result = [j for j in jobs if j]
         logger.info(f"[{source}] scraped {len(result)} jobs")

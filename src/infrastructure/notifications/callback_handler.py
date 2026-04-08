@@ -56,7 +56,7 @@ class CallbackHandler:
             "text": self._formatter.description_message(description),
             "parse_mode": "HTML",
             "reply_to_message_id": int(msg_id),
-        })
+        }, timeout=httpx.Timeout(20.0, connect=10.0))
         httpx.post(f"{self._base}/editMessageReplyMarkup", json={
             "chat_id": self._chat_id,
             "message_id": int(msg_id),
