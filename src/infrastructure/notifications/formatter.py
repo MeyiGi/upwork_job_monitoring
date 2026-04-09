@@ -1,4 +1,7 @@
+from datetime import datetime, timezone, timedelta
 from src.domain.entities.job import Job
+
+_BISHKEK = timezone(timedelta(hours=6))
 
 SOURCE_LABELS = {
     "most-recent": "🕐 Most Recent",
@@ -18,11 +21,11 @@ class TelegramFormatter:
     def job_message(self, job: Job) -> str:
         return (
             f"🏷 <b>{SOURCE_LABELS.get(job.source, job.source)}</b>\n"
-            f"🆕 <b>{self._e(job.title)}</b>\n\n"
+            f"🆕 <code>{self._e(job.title)}</code>\n\n"
             f"{self._budget_icon(job.budget)} <code>{self._e(job.budget)}</code>  "
             f"{TIER_ICONS.get(job.contractor_tier or '', '⚪')} "
             f"<code>{self._e(job.contractor_tier)}</code>\n"
-            f"🕐 {self._e(job.posted)}  |  "
+            f"🕐 {self._e(job.posted)}  ({self._time_ago(job.posted)})  |  "
             f"📊 {self._e(job.proposals)}  |  "
             f"🌍 {self._e(job.country)}\n"
             f"💼 Client spent: {self._e(job.client_spend)}\n\n"
@@ -51,6 +54,22 @@ class TelegramFormatter:
         if "/hr" in budget:
             return "⏱"
         return "💸"
+
+    def _time_ago(self, posted: str | None) -> str:
+        if not posted:
+            return "—"
+        try:
+            dt = datetime.strptime(posted, "%H:%M %Y-%m-%d").replace(tzinfo=_BISHKEK)
+            diff = int((datetime.now(_BISHKEK) - dt).total_seconds())
+            if diff < 60:
+                return f"{diff}s ago"
+            if diff < 3600:
+                return f"{diff // 60}m ago"
+            if diff < 86400:
+                return f"{diff // 3600}h {(diff % 3600) // 60}m ago"
+            return f"{diff // 86400}d ago"
+        except ValueError:
+            return "—"
 
     def _summary_block(self, job: Job) -> str:
         if not job.ai_summary:
