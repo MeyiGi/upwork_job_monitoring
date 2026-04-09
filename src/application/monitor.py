@@ -25,19 +25,20 @@ class JobMonitor:
         self._scraper.setup()
         while True:
             self._cycle()
-            self._repo.flush()
             self._sleep()
 
     def _cycle(self) -> None:
-        all_jobs = [
-            job
-            for source, url in settings.sources.items()
-            for job in self._scraper.scrape(url, source)
-        ]
-        unique = list({j.link: j for j in all_jobs}.values())
-
-        for job in unique:
-            self._processor.process(job)
+        seen: set[str] = set()
+        for source, url in settings.sources.items():
+            new = 0
+            for job in self._scraper.scrape(url, source):
+                if job.link not in seen:
+                    seen.add(job.link)
+                    if self._processor.process(job):
+                        new += 1
+            if new:
+                logger.info(f"[{source}] sent {new} new jobs")
+            self._repo.flush()
 
     def _sleep(self) -> None:
         delay = random.uniform(*settings.check_interval)

@@ -22,6 +22,7 @@ class CallbackHandler:
         self._store[str(message_id)] = description
 
     def start(self) -> None:
+        httpx.get(f"{self._base}/deleteWebhook", params={"drop_pending_updates": "true"})
         threading.Thread(target=self._poll, daemon=True).start()
         logger.info("Callback handler started")
 

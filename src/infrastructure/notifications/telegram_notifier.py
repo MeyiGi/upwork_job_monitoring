@@ -23,7 +23,7 @@ class TelegramNotifier(NotifierPort):
     def start(self) -> None:
         self._callbacks.start()
 
-    def send(self, job: Job) -> None:
+    def send(self, job: Job) -> int | None:
         text = self._formatter.job_message(job)
         self._callbacks.set_last_job(text)
         response = httpx.post(f"{self._base}/sendMessage", json={
@@ -40,8 +40,25 @@ class TelegramNotifier(NotifierPort):
 
         if not response.get("ok"):
             logger.error(f"Telegram error: {response.get('description')}")
-            return
+            return None
 
         msg_id = response["result"]["message_id"]
         if job.description:
             self._callbacks.register(msg_id, job.description)
+        return msg_id
+
+    def edit_summary(self, msg_id: int, job: Job) -> None:
+        text = self._formatter.job_message(job)
+        self._callbacks.set_last_job(text)
+        httpx.post(f"{self._base}/editMessageText", json={
+            "chat_id": self._chat_id,
+            "message_id": msg_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+            "reply_markup": {
+                "inline_keyboard": [[
+                    {"text": "📝 Show description", "callback_data": "desc"}
+                ]]
+            },
+        }, timeout=httpx.Timeout(20.0, connect=10.0))

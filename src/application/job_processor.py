@@ -1,3 +1,4 @@
+import threading
 from loguru import logger
 
 from src.domain.entities.job import Job
@@ -7,7 +8,7 @@ from src.domain.ports.repository_port import RepositoryPort
 
 
 class JobProcessor:
-    """Enriches and dispatches a single job. Knows nothing about scraping or loops."""
+    """Sends notification immediately, enriches with AI in background."""
 
     def __init__(self, llm: LLMPort, notifier: NotifierPort, repo: RepositoryPort):
         self._llm = llm
@@ -18,9 +19,18 @@ class JobProcessor:
         if self._repo.exists(job.link):
             return False
 
-        job.ai_summary = self._llm.summarize(job)
-        self._notifier.send(job)
+        msg_id = self._notifier.send(job)
         self._repo.add(job.link)
-
         logger.success(f"[{job.source}] {job.title}")
+
+        if msg_id:
+            threading.Thread(
+                target=self._enrich, args=(job, msg_id), daemon=True
+            ).start()
         return True
+
+    def _enrich(self, job: Job, msg_id: int) -> None:
+        summary = self._llm.summarize(job)
+        if summary:
+            job.ai_summary = summary
+            self._notifier.edit_summary(msg_id, job)

@@ -1,23 +1,25 @@
 import time
-import random
 from src.infrastructure.scraping.browser import Browser
+
+_CARD_SELECTOR = "css:section.air3-card-section"
 
 
 class PageFetcher:
-    """Fetches raw HTML with a random delay."""
+    """Fetches raw HTML, waiting for job cards to appear."""
 
-    def __init__(self, browser: Browser, wait_range: tuple[int, int]):
+    def __init__(self, browser: Browser, wait_range: tuple[int, int] = (0, 0)):
         self._browser = browser
-        self._wait_range = wait_range
 
     def fetch(self, url: str) -> str:
-        self._browser.tab.get(url)
-        time.sleep(random.uniform(*self._wait_range))
+        tab = self._browser.tab
+        tab.set.load_mode.eager()
+        tab.get(url)
+        tab.ele(_CARD_SELECTOR, timeout=15)
         self._scroll()
-        return self._browser.tab.html
+        return tab.html
 
     def _scroll(self) -> None:
         tab = self._browser.tab
-        for _ in range(1):
-            tab.scroll.down(300)
-            time.sleep(random.uniform(0.3, 0.7))
+        for _ in range(3):
+            tab.scroll.down(400)
+            time.sleep(0.3)
