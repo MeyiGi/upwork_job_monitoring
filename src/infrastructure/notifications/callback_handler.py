@@ -2,6 +2,7 @@ import threading
 import httpx
 import time
 from loguru import logger
+from src.application.stats import stats
 
 
 class CallbackHandler:
@@ -27,6 +28,10 @@ class CallbackHandler:
 
     def start(self) -> None:
         httpx.get(f"{self._base}/deleteWebhook", params={"drop_pending_updates": "true"})
+        httpx.post(f"{self._base}/setMyCommands", json={"commands": [
+            {"command": "latest", "description": "Show the latest job"},
+            {"command": "stats",  "description": "Show statistics"},
+        ]})
         threading.Thread(target=self._poll, daemon=True).start()
         logger.info("Callback handler started")
 
@@ -58,6 +63,8 @@ class CallbackHandler:
             logger.info(f"Message received: {text!r}")
             if text.startswith("/latest"):
                 self._send_latest()
+            elif text.startswith("/stats"):
+                self._send_stats()
             return
 
         cb = update.get("callback_query")
@@ -96,6 +103,13 @@ class CallbackHandler:
                 "message_id": int(msg_id),
                 "reply_markup": {"inline_keyboard": []},
             })
+
+    def _send_stats(self) -> None:
+        httpx.post(f"{self._base}/sendMessage", json={
+            "chat_id": self._chat_id,
+            "text": stats.summary(),
+            "parse_mode": "HTML",
+        }, timeout=httpx.Timeout(20.0, connect=10.0))
 
     def _send_latest(self) -> None:
         if not self._last_job_text:

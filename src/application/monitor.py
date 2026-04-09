@@ -30,14 +30,17 @@ class JobMonitor:
     def _cycle(self) -> None:
         seen: set[str] = set()
         for source, url in settings.sources.items():
-            new = 0
-            for job in self._scraper.scrape(url, source):
-                if job.link not in seen:
-                    seen.add(job.link)
-                    if self._processor.process(job):
-                        new += 1
-            if new:
-                logger.info(f"[{source}] sent {new} new jobs")
+            jobs = self._scraper.scrape(url, source)
+            logger.info(f"[{source}] ── processing {len(jobs)} jobs ──")
+            sent = 0
+            for job in jobs:
+                if job.link in seen:
+                    # logger.debug(f"↩ duplicate across sources: {job.title}")
+                    continue
+                seen.add(job.link)
+                if self._processor.process(job):
+                    sent += 1
+            logger.info(f"[{source}] ── done: {sent} sent ──")
             self._repo.flush()
 
     def _sleep(self) -> None:

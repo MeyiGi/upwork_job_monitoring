@@ -1,4 +1,5 @@
 import threading
+import re
 from pathlib import Path
 from loguru import logger
 
@@ -7,6 +8,7 @@ from src.domain.ports.llm_port import LLMPort
 from src.domain.ports.notifier_port import NotifierPort
 from src.domain.ports.repository_port import RepositoryPort
 from src.config.settings import settings
+from src.application.stats import stats
 
 
 class JobProcessor:
@@ -17,6 +19,7 @@ class JobProcessor:
         self._notifier = notifier
         self._repo = repo
         self._blacklist = self._load_blacklist()
+        logger.info(f"Blacklist: {self._blacklist or '(empty)'}")
 
     def _load_blacklist(self) -> list[str]:
         path = Path(settings.blacklist_file)
@@ -24,30 +27,39 @@ class JobProcessor:
             return []
         return [line.strip().lower() for line in path.read_text().splitlines() if line.strip()]
 
-    def _is_blacklisted(self, job: Job) -> bool:
-        text = job.title.lower()
-        return any(word in text for word in self._blacklist)
+    def _is_blacklisted(self, job: Job) -> tuple[bool, str]:
+        text = job.title.lower() + " " + (job.description or "").lower()
+        for word in self._blacklist:
+            if word in text:
+                return True, word
+        return False, ""
 
     def _is_zero_spend(self, job: Job) -> bool:
         spend = (job.client_spend or "").strip()
         if not spend:
             return True
-        import re
         return bool(re.match(r"^\$0(\.0+)?[KMB]?$", spend, re.IGNORECASE))
 
     def process(self, job: Job) -> bool:
         if self._repo.exists(job.link):
+            stats.add_seen()
             return False
+        logger.info(f"Processing not in queue: {job.title}")
         if self._is_zero_spend(job):
-            logger.debug(f"[{job.source}] skipped (zero spend): {job.title}")
+            stats.add_zero_spend()
+            logger.info(f"  ✗ zero spend  — {job.title!r}")
             return False
-        if self._is_blacklisted(job):
-            logger.debug(f"[{job.source}] skipped (blacklist): {job.title}")
+
+        blacklisted, word = self._is_blacklisted(job)
+        if blacklisted:
+            stats.add_blacklist()
+            logger.info(f"  ✗ blacklist '{word}'  — {job.title!r}")
             return False
 
         msg_id = self._notifier.send(job)
         self._repo.add(job.link)
-        logger.success(f"[{job.source}] {job.title}")
+        stats.add_sent()
+        logger.success(f"  ✓ SENT  — {job.title!r}  |  {job.client_spend}  |  {job.budget}")
 
         if msg_id:
             threading.Thread(
@@ -60,3 +72,5 @@ class JobProcessor:
         if summary:
             job.ai_summary = summary
             self._notifier.edit_summary(msg_id, job)
+        else:
+            logger.warning(f"  AI returned nothing — {job.title!r}")

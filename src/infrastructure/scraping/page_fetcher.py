@@ -22,4 +22,4 @@ class PageFetcher:
         tab = self._browser.tab
         for _ in range(3):
             tab.scroll.down(400)
-            # time.sleep(0.3)
+            time.sleep(0.3)
