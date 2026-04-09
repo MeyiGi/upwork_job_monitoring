@@ -24,9 +24,11 @@ class TelegramNotifier(NotifierPort):
         self._callbacks.start()
 
     def send(self, job: Job) -> None:
+        text = self._formatter.job_message(job)
+        self._callbacks.set_last_job(text)
         response = httpx.post(f"{self._base}/sendMessage", json={
             "chat_id": self._chat_id,
-            "text": self._formatter.job_message(job),
+            "text": text,
             "parse_mode": "HTML",
             "disable_web_page_preview": True,
             "reply_markup": {

@@ -18,6 +18,6 @@ class PageFetcher:
 
     def _scroll(self) -> None:
         tab = self._browser.tab
-        for _ in range(5):
+        for _ in range(1):
             tab.scroll.down(300)
             time.sleep(random.uniform(0.3, 0.7))

@@ -5,13 +5,18 @@ from loguru import logger
 
 
 class CallbackHandler:
-    """Listens for inline button presses, replies with description."""
+    """Listens for inline button presses and /latest command."""
 
     def __init__(self, token: str, chat_id: str, formatter):
         self._base = f"https://api.telegram.org/bot{token}"
         self._chat_id = chat_id
         self._formatter = formatter
         self._store: dict[str, str] = {}
+        self._last_job_text: str | None = None
+        self._backoff: int = 5
+
+    def set_last_job(self, text: str) -> None:
+        self._last_job_text = text
 
     def register(self, message_id: int, description: str) -> None:
         self._store[str(message_id)] = description
@@ -27,19 +32,29 @@ class CallbackHandler:
                 updates = self._get_updates(offset)
                 for update in updates:
                     offset = update["update_id"] + 1
-                    self._handle(update)
+                    try:
+                        self._handle(update)
+                    except Exception as e:
+                        logger.error(f"Handle error: {e}")
             except Exception as e:
                 logger.error(f"Polling error: {e}")
-                time.sleep(self._backoff)
+                time.sleep(self._backoff)  # теперь поле существует
 
     def _get_updates(self, offset: int | None) -> list:
-        params = {"timeout": 25, "allowed_updates": ["callback_query"]}
+        params = {"timeout": 25, "allowed_updates": ["callback_query", "message"]}
         if offset:
             params["offset"] = offset
         r = httpx.get(f"{self._base}/getUpdates", params=params, timeout=35)
         return r.json().get("result", [])
 
     def _handle(self, update: dict) -> None:
+        if msg := update.get("message"):
+            text = msg.get("text", "")
+            logger.info(f"Message received: {text!r}")
+            if text.startswith("/latest"):
+                self._send_latest()
+            return
+
         cb = update.get("callback_query")
         if not cb:
             return
@@ -64,3 +79,17 @@ class CallbackHandler:
             "message_id": int(msg_id),
             "reply_markup": {"inline_keyboard": []},
         })
+
+    def _send_latest(self) -> None:
+        if not self._last_job_text:
+            httpx.post(f"{self._base}/sendMessage", json={
+                "chat_id": self._chat_id,
+                "text": "No jobs yet.",
+            })
+            return
+        httpx.post(f"{self._base}/sendMessage", json={
+            "chat_id": self._chat_id,
+            "text": self._last_job_text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }, timeout=httpx.Timeout(20.0, connect=10.0))
