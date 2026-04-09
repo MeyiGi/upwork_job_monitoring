@@ -1,5 +1,6 @@
 import threading
 import httpx
+import time
 from loguru import logger
 
 
@@ -29,6 +30,7 @@ class CallbackHandler:
                     self._handle(update)
             except Exception as e:
                 logger.error(f"Polling error: {e}")
+                time.sleep(self._backoff)
 
     def _get_updates(self, offset: int | None) -> list:
         params = {"timeout": 25, "allowed_updates": ["callback_query"]}
