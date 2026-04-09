@@ -85,7 +85,7 @@ class CallbackHandler:
             httpx.post(f"{self._base}/sendMessage", json={
                 "chat_id": self._chat_id,
                 "text": "No jobs yet.",
-            })
+            }, timeout=httpx.Timeout(20.0, connect=10.0))
             return
         httpx.post(f"{self._base}/sendMessage", json={
             "chat_id": self._chat_id,
