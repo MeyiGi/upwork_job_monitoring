@@ -12,6 +12,7 @@ class CallbackHandler:
         self._chat_id = chat_id
         self._formatter = formatter
         self._store: dict[str, str] = {}
+        self._titles: dict[str, str] = {}
         self._last_job_text: str | None = None
         self._backoff: int = 5
 
@@ -20,6 +21,9 @@ class CallbackHandler:
 
     def register(self, message_id: int, description: str) -> None:
         self._store[str(message_id)] = description
+
+    def register_title(self, message_id: int, title: str) -> None:
+        self._titles[str(message_id)] = title
 
     def start(self) -> None:
         httpx.get(f"{self._base}/deleteWebhook", params={"drop_pending_updates": "true"})
@@ -61,25 +65,37 @@ class CallbackHandler:
             return
 
         msg_id = str(cb["message"]["message_id"])
-        description = self._store.get(msg_id)
+        cb_data = cb.get("data", "")
 
         httpx.post(f"{self._base}/answerCallbackQuery",
                    json={"callback_query_id": cb["id"]})
 
-        if not description:
+        if cb_data == "title":
+            title = self._titles.get(msg_id)
+            if title:
+                httpx.post(f"{self._base}/sendMessage", json={
+                    "chat_id": self._chat_id,
+                    "text": f"<code>{title}</code>",
+                    "parse_mode": "HTML",
+                    "reply_to_message_id": int(msg_id),
+                }, timeout=httpx.Timeout(20.0, connect=10.0))
             return
 
-        httpx.post(f"{self._base}/sendMessage", json={
-            "chat_id": self._chat_id,
-            "text": self._formatter.description_message(description),
-            "parse_mode": "HTML",
-            "reply_to_message_id": int(msg_id),
-        }, timeout=httpx.Timeout(20.0, connect=10.0))
-        httpx.post(f"{self._base}/editMessageReplyMarkup", json={
-            "chat_id": self._chat_id,
-            "message_id": int(msg_id),
-            "reply_markup": {"inline_keyboard": []},
-        })
+        if cb_data == "desc":
+            description = self._store.get(msg_id)
+            if not description:
+                return
+            httpx.post(f"{self._base}/sendMessage", json={
+                "chat_id": self._chat_id,
+                "text": self._formatter.description_message(description),
+                "parse_mode": "HTML",
+                "reply_to_message_id": int(msg_id),
+            }, timeout=httpx.Timeout(20.0, connect=10.0))
+            httpx.post(f"{self._base}/editMessageReplyMarkup", json={
+                "chat_id": self._chat_id,
+                "message_id": int(msg_id),
+                "reply_markup": {"inline_keyboard": []},
+            })
 
     def _send_latest(self) -> None:
         if not self._last_job_text:

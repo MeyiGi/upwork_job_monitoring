@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # Paths
     prompts_dir: str = "data/prompts"
     selectors_dir: str = "data/selectors"
+    blacklist_file: str = "data/blacklist.txt"
 
     @property
     def page_wait(self) -> Tuple[int, int]:

@@ -33,7 +33,8 @@ class TelegramNotifier(NotifierPort):
             "disable_web_page_preview": True,
             "reply_markup": {
                 "inline_keyboard": [[
-                    {"text": "📝 Show description", "callback_data": "desc"}
+                    {"text": "📋 Title", "callback_data": "title"},
+                    {"text": "📝 Description", "callback_data": "desc"},
                 ]]
             },
         }).json()
@@ -43,6 +44,7 @@ class TelegramNotifier(NotifierPort):
             return None
 
         msg_id = response["result"]["message_id"]
+        self._callbacks.register_title(msg_id, job.title)
         if job.description:
             self._callbacks.register(msg_id, job.description)
         return msg_id
