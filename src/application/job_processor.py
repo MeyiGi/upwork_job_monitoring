@@ -1,5 +1,6 @@
 import threading
 import re
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from loguru import logger
 
@@ -34,6 +35,16 @@ class JobProcessor:
                 return True, word
         return False, ""
 
+    def _is_too_old(self, job: Job) -> bool:
+        if not job.posted:
+            return False
+        try:
+            _BISHKEK = timezone(timedelta(hours=6))
+            dt = datetime.strptime(job.posted, "%H:%M %Y-%m-%d").replace(tzinfo=_BISHKEK)
+            return (datetime.now(_BISHKEK) - dt).total_seconds() > 3600
+        except ValueError:
+            return False
+
     def _is_zero_spend(self, job: Job) -> bool:
         spend = (job.client_spend or "").strip()
         if not spend:
@@ -45,9 +56,14 @@ class JobProcessor:
             stats.add_seen()
             return False
         logger.info(f"Processing not in queue: {job.title}")
-        if self._is_zero_spend(job):
-            stats.add_zero_spend()
-            logger.info(f"  ✗ zero spend  — {job.title!r}")
+        # if self._is_zero_spend(job):
+            # stats.add_zero_spend()
+            # logger.info(f"  ✗ zero spend  — {job.title!r}")
+            # return False
+
+        if self._is_too_old(job):
+            self._repo.add(job.link)
+            logger.info(f"  ✗ too old (>1h)  — {job.title!r}")
             return False
 
         blacklisted, word = self._is_blacklisted(job)
