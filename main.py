@@ -1,3 +1,5 @@
+import socket
+
 from loguru import logger
 
 from src.infrastructure.scraping.upwork_scraper import UpworkScraper
@@ -17,6 +19,7 @@ def main() -> None:
     repo      = JsonQueueRepository()
 
     notifier.start()
+    notifier.send_text(f"🟢 Upwork monitor started on {socket.gethostname()}")
 
     processor = JobProcessor(llm=llm, notifier=notifier, repo=repo)
     monitor   = JobMonitor(scraper=scraper, processor=processor, repo=repo)

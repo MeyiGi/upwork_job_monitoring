@@ -9,6 +9,9 @@ class NotifierPort(ABC):
     def send(self, job: Job) -> Optional[int]: ...
 
     @abstractmethod
+    def send_text(self, text: str) -> None: ...
+
+    @abstractmethod
     def start(self) -> None: ...
 
     @abstractmethod

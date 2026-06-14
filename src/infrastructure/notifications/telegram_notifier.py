@@ -23,6 +23,14 @@ class TelegramNotifier(NotifierPort):
     def start(self) -> None:
         self._callbacks.start()
 
+    def send_text(self, text: str) -> None:
+        response = httpx.post(f"{self._base}/sendMessage", json={
+            "chat_id": self._chat_id,
+            "text": text,
+        }).json()
+        if not response.get("ok"):
+            logger.error(f"Telegram error: {response.get('description')}")
+
     def send(self, job: Job) -> int | None:
         text = self._formatter.job_message(job)
         self._callbacks.set_last_job(text)
