@@ -15,6 +15,7 @@ class Browser:
         # co.set_argument('--disable-gpu')
         # co.set_argument('--remote-allow-origins=*')
         co.set_browser_path("/usr/bin/google-chrome")
+        co.auto_port()
 
         self.instance = Chromium(co)
         self.tab = self.instance.new_tab()
