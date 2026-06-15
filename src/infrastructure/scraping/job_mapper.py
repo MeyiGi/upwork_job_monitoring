@@ -39,6 +39,7 @@ class JobMapper:
             proposals=self._text(card, self._f["proposals"]),
             country=self._text(card, self._f["country"]),
             client_spend=self._text(card, self._f["client_spend"]),
+            payment_verification=self._text(card, self._f["verification"]),
         )
 
     def _text(self, card: Tag, selector: str) -> Optional[str]:

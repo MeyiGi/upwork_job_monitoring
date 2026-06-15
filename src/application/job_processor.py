@@ -45,6 +45,9 @@ class JobProcessor:
         except ValueError:
             return False
 
+    def _is_unverified_payment(self, job: Job) -> bool:
+        return (job.payment_verification or "").strip().lower() == "payment unverified"
+
     def _is_zero_spend(self, job: Job) -> bool:
         spend = (job.client_spend or "").strip()
         if not spend:
@@ -64,6 +67,12 @@ class JobProcessor:
         if self._is_too_old(job):
             self._repo.add(job.link)
             logger.info(f"  ✗ too old (>1h)  — {job.title!r}")
+            return False
+
+        if self._is_unverified_payment(job):
+            self._repo.add(job.link)
+            stats.add_unverified_payment()
+            logger.info(f"  ✗ payment unverified  — {job.title!r}")
             return False
 
         blacklisted, word = self._is_blacklisted(job)

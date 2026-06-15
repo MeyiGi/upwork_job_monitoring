@@ -14,4 +14,5 @@ class Job(BaseModel):
     proposals: Optional[str] = None
     country: Optional[str] = None
     client_spend: Optional[str] = None
+    payment_verification: Optional[str] = None
     ai_summary: Optional[str] = None

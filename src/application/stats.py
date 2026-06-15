@@ -12,6 +12,7 @@ class Stats:
         self.session_sent = 0
         self.session_zero_spend = 0
         self.session_blacklist = 0
+        self.session_unverified_payment = 0
         self.skipped_seen = 0
         # daily (persisted, resets at midnight)
         self._load()
@@ -24,10 +25,12 @@ class Stats:
                 self.day_sent = data.get("sent", 0)
                 self.day_zero_spend = data.get("zero_spend", 0)
                 self.day_blacklist = data.get("blacklist", 0)
+                self.day_unverified_payment = data.get("unverified_payment", 0)
                 return
         self.day_sent = 0
         self.day_zero_spend = 0
         self.day_blacklist = 0
+        self.day_unverified_payment = 0
 
     def _save(self):
         _FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -36,6 +39,7 @@ class Stats:
             "sent": self.day_sent,
             "zero_spend": self.day_zero_spend,
             "blacklist": self.day_blacklist,
+            "unverified_payment": self.day_unverified_payment,
         }))
 
     def add_sent(self):
@@ -51,6 +55,11 @@ class Stats:
     def add_blacklist(self):
         self.session_blacklist += 1
         self.day_blacklist += 1
+        self._save()
+
+    def add_unverified_payment(self):
+        self.session_unverified_payment += 1
+        self.day_unverified_payment += 1
         self._save()
 
     def add_seen(self):
@@ -72,11 +81,13 @@ class Stats:
             f"{row('  sent', self.day_sent)}\n"
             f"{row('  zero spend', self.day_zero_spend)}\n"
             f"{row('  blacklisted', self.day_blacklist)}\n"
+            f"{row('  unverified pay', self.day_unverified_payment)}\n"
             f"<code>─────────────────────</code>\n"
             f"🔄  <b>This session</b>\n"
             f"{row('  sent', self.session_sent)}\n"
             f"{row('  zero spend', self.session_zero_spend)}\n"
             f"{row('  blacklisted', self.session_blacklist)}\n"
+            f"{row('  unverified pay', self.session_unverified_payment)}\n"
             f"{row('  already seen', self.skipped_seen)}\n"
             f"<code>─────────────────────</code>\n"
             f"⏱  uptime  <b>{h}h {m}m</b>"
