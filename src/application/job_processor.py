@@ -48,6 +48,11 @@ class JobProcessor:
     def _is_unverified_payment(self, job: Job) -> bool:
         return (job.payment_verification or "").strip().lower() == "payment unverified"
 
+    def _is_bad_rating(self, job: Job) -> bool:
+        if job.client_rating_width is None:
+            return False
+        return job.client_rating_width < 63.0
+
     def _is_zero_spend(self, job: Job) -> bool:
         spend = (job.client_spend or "").strip()
         if not spend:
@@ -73,6 +78,12 @@ class JobProcessor:
             self._repo.add(job.link)
             stats.add_unverified_payment()
             logger.info(f"  ✗ payment unverified  — {job.title!r}")
+            return False
+
+        if self._is_bad_rating(job):
+            self._repo.add(job.link)
+            stats.add_bad_rating()
+            logger.info(f"  ✗ bad rating ({job.client_rating_width}px)  — {job.title!r}")
             return False
 
         blacklisted, word = self._is_blacklisted(job)

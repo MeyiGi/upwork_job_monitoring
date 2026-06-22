@@ -1,3 +1,4 @@
+import re
 from typing import Optional, List
 from bs4 import Tag
 import dateparser
@@ -40,6 +41,7 @@ class JobMapper:
             country=self._text(card, self._f["country"]),
             client_spend=self._text(card, self._f["client_spend"]),
             payment_verification=self._text(card, self._f["verification"]),
+            client_rating_width=self._parse_rating_width(card),
         )
 
     def _text(self, card: Tag, selector: str) -> Optional[str]:
@@ -54,6 +56,13 @@ class JobMapper:
             return None
         dt = dateparser.parse(text, settings=self._DATE_SETTINGS)
         return dt.strftime("%H:%M %Y-%m-%d") if dt else None
+
+    def _parse_rating_width(self, card: Tag) -> Optional[float]:
+        el = card.select_one(self._f["rating"])
+        if not el:
+            return None
+        m = re.search(r"width:\s*([\d.]+)px", el.get("style", ""))
+        return float(m.group(1)) if m else None
 
     def _parse_budget(self, card: Tag) -> Optional[str]:
         job_type = self._text(card, self._f["job_type"]) or ""

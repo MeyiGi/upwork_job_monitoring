@@ -12,6 +12,7 @@ fields:
   country: "[data-test='client-country']"
   client_spend: "[data-test='formatted-amount']"
   verification: "[data-test='payment-verification-status']"
+  rating: "div.air3-rating-foreground"
 
 budget_keywords:
   hourly: "Hourly"

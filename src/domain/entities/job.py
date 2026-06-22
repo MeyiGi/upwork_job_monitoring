@@ -15,4 +15,5 @@ class Job(BaseModel):
     country: Optional[str] = None
     client_spend: Optional[str] = None
     payment_verification: Optional[str] = None
+    client_rating_width: Optional[float] = None
     ai_summary: Optional[str] = None
