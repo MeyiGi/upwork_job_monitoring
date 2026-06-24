@@ -1,15 +1,14 @@
 import threading
 import re
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 from loguru import logger
 
 from src.domain.entities.job import Job
 from src.domain.ports.llm_port import LLMPort
 from src.domain.ports.notifier_port import NotifierPort
 from src.domain.ports.repository_port import RepositoryPort
-from src.config.settings import settings
 from src.application.stats import stats
+from src.application.blacklist import blacklist
 
 
 class JobProcessor:
@@ -19,18 +18,11 @@ class JobProcessor:
         self._llm = llm
         self._notifier = notifier
         self._repo = repo
-        self._blacklist = self._load_blacklist()
-        logger.info(f"Blacklist: {self._blacklist or '(empty)'}")
-
-    def _load_blacklist(self) -> list[str]:
-        path = Path(settings.blacklist_file)
-        if not path.exists():
-            return []
-        return [line.strip().lower() for line in path.read_text().splitlines() if line.strip()]
+        logger.info(f"Blacklist: {blacklist.words or '(empty)'}")
 
     def _is_blacklisted(self, job: Job) -> tuple[bool, str]:
         text = job.title.lower() + " " + (job.description or "").lower()
-        for word in self._blacklist:
+        for word in blacklist.words:
             if word in text:
                 return True, word
         return False, ""
@@ -49,7 +41,7 @@ class JobProcessor:
         return (job.payment_verification or "").strip().lower() == "payment unverified"
 
     def _is_bad_rating(self, job: Job) -> bool:
-        if job.client_rating_width is None:
+        if job.client_rating_width is None or job.client_rating_width == 0:
             return False
         return job.client_rating_width < 63.0
 
