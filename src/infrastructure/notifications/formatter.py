@@ -6,13 +6,13 @@ _BISHKEK = timezone(timedelta(hours=6))
 SOURCE_LABELS = {
     "most-recent": "🕐 Most Recent",
     "best-matches": "⭐ Best Matches",
-    # "my-feed":      "📰 My Feed",
+    "my-feed": "📰 My Feed",
 }
 
 TIER_ICONS = {
-    "Entry level":  "🟢",
+    "Entry level": "🟢",
     "Intermediate": "🟡",
-    "Expert":       "🔴",
+    "Expert": "🔴",
 }
 
 
@@ -40,11 +40,7 @@ class TelegramFormatter:
     def _e(self, text: str | None) -> str:
         if not text:
             return "—"
-        return (
-            text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-        )
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def _budget_icon(self, budget: str | None) -> str:
         if not budget:

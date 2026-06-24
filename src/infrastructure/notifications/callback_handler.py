@@ -3,6 +3,7 @@ import httpx
 import time
 from loguru import logger
 from src.application.stats import stats
+from src.application.blacklist import blacklist
 
 
 class CallbackHandler:
@@ -29,8 +30,9 @@ class CallbackHandler:
     def start(self) -> None:
         httpx.get(f"{self._base}/deleteWebhook", params={"drop_pending_updates": "true"})
         httpx.post(f"{self._base}/setMyCommands", json={"commands": [
-            {"command": "latest", "description": "Show the latest job"},
-            {"command": "stats",  "description": "Show statistics"},
+            {"command": "latest",  "description": "Show the latest job"},
+            {"command": "stats",   "description": "Show statistics"},
+            {"command": "exclude", "description": "Add keyword to blacklist"},
         ]})
         threading.Thread(target=self._poll, daemon=True).start()
         logger.info("Callback handler started")
@@ -65,6 +67,8 @@ class CallbackHandler:
                 self._send_latest()
             elif text.startswith("/stats"):
                 self._send_stats()
+            elif text.startswith("/exclude"):
+                self._add_exclude(text[len("/exclude"):].strip())
             return
 
         cb = update.get("callback_query")
@@ -103,6 +107,19 @@ class CallbackHandler:
                 "message_id": int(msg_id),
                 "reply_markup": {"inline_keyboard": []},
             })
+
+    def _add_exclude(self, word: str) -> None:
+        if not word:
+            text = "Usage: /exclude &lt;keyword&gt;"
+        elif blacklist.add(word):
+            text = f"✅ Added to blacklist: <code>{word}</code>"
+        else:
+            text = f"⚠️ Already in blacklist: <code>{word}</code>"
+        httpx.post(f"{self._base}/sendMessage", json={
+            "chat_id": self._chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+        }, timeout=httpx.Timeout(20.0, connect=10.0))
 
     def _send_stats(self) -> None:
         httpx.post(f"{self._base}/sendMessage", json={
