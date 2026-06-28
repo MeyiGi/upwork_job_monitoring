@@ -9,6 +9,7 @@ from src.domain.ports.notifier_port import NotifierPort
 from src.domain.ports.repository_port import RepositoryPort
 from src.application.stats import stats
 from src.application.blacklist import blacklist
+from src.application.filter_config import filter_config
 
 
 class JobProcessor:
@@ -21,9 +22,11 @@ class JobProcessor:
         logger.info(f"Blacklist: {blacklist.words or '(empty)'}")
 
     def _is_blacklisted(self, job: Job) -> tuple[bool, str]:
+        if "feed" not in job.source:
+            return False, ""
         text = job.title.lower() + " " + (job.description or "").lower()
         for word in blacklist.words:
-            if word in text:
+            if re.search(r'\b' + re.escape(word) + r'\b', text):
                 return True, word
         return False, ""
 
@@ -33,7 +36,7 @@ class JobProcessor:
         try:
             _BISHKEK = timezone(timedelta(hours=6))
             dt = datetime.strptime(job.posted, "%H:%M %Y-%m-%d").replace(tzinfo=_BISHKEK)
-            return (datetime.now(_BISHKEK) - dt).total_seconds() > 3600
+            return (datetime.now(_BISHKEK) - dt).total_seconds() > filter_config.max_age_minutes * 60
         except ValueError:
             return False
 
@@ -63,7 +66,8 @@ class JobProcessor:
 
         if self._is_too_old(job):
             self._repo.add(job.link)
-            logger.info(f"  ✗ too old (>1h)  — {job.title!r}")
+            stats.add_too_old()
+            logger.info(f"  ✗ too old (>{filter_config.max_age_minutes}m)  — {job.title!r}")
             return False
 
         if self._is_unverified_payment(job):

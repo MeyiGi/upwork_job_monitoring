@@ -1,9 +1,11 @@
 import threading
 import httpx
 import time
+from datetime import datetime
 from loguru import logger
 from src.application.stats import stats
 from src.application.blacklist import blacklist
+from src.application.filter_config import filter_config
 
 
 class CallbackHandler:
@@ -30,9 +32,13 @@ class CallbackHandler:
     def start(self) -> None:
         httpx.get(f"{self._base}/deleteWebhook", params={"drop_pending_updates": "true"})
         httpx.post(f"{self._base}/setMyCommands", json={"commands": [
-            {"command": "latest",  "description": "Show the latest job"},
-            {"command": "stats",   "description": "Show statistics"},
-            {"command": "exclude", "description": "Add keyword to blacklist"},
+            {"command": "latest",    "description": "Show the latest job"},
+            {"command": "stats",     "description": "Show statistics"},
+            {"command": "status",    "description": "Show current filter settings"},
+            {"command": "exclude",   "description": "Add keyword to blacklist"},
+            {"command": "remove",    "description": "Remove keyword from blacklist"},
+            {"command": "blacklist", "description": "Show all blacklist words"},
+            {"command": "maxage",    "description": "Set max job age in minutes (e.g. /maxage 20)"},
         ]})
         threading.Thread(target=self._poll, daemon=True).start()
         logger.info("Callback handler started")
@@ -69,6 +75,14 @@ class CallbackHandler:
                 self._send_stats()
             elif text.startswith("/exclude"):
                 self._add_exclude(text[len("/exclude"):].strip())
+            elif text.startswith("/remove"):
+                self._remove_exclude(text[len("/remove"):].strip())
+            elif text.startswith("/blacklist"):
+                self._send_blacklist()
+            elif text.startswith("/maxage"):
+                self._set_maxage(text[len("/maxage"):].strip())
+            elif text.startswith("/status"):
+                self._send_status()
             return
 
         cb = update.get("callback_query")
@@ -108,7 +122,68 @@ class CallbackHandler:
                 "reply_markup": {"inline_keyboard": []},
             })
 
+    def _send_status(self) -> None:
+        uptime = datetime.now() - stats.started_at
+        h, rem = divmod(int(uptime.total_seconds()), 3600)
+        m = rem // 60
+        words = blacklist.words
+        text = (
+            f"<b>Status</b>\n"
+            f"<code>─────────────────────</code>\n"
+            f"⏱  Max job age: <b>{filter_config.max_age_minutes} min</b>\n"
+            f"🚫  Blacklist: <b>{len(words)} word{'s' if len(words) != 1 else ''}</b>\n"
+            f"🟢  Running: <b>{h}h {m}m</b>"
+        )
+        httpx.post(f"{self._base}/sendMessage", json={
+            "chat_id": self._chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+        }, timeout=httpx.Timeout(20.0, connect=10.0))
+
+    def _send_blacklist(self) -> None:
+        words = blacklist.words
+        if not words:
+            text = "Blacklist is empty."
+        else:
+            listed = "\n".join(f"  • <code>{w}</code>" for w in words)
+            text = f"<b>Blacklist</b> ({len(words)} words)\n{listed}"
+        httpx.post(f"{self._base}/sendMessage", json={
+            "chat_id": self._chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+        }, timeout=httpx.Timeout(20.0, connect=10.0))
+
+    def _remove_exclude(self, word: str) -> None:
+        word = word.lower()
+        if not word:
+            text = "Usage: /remove &lt;keyword&gt;"
+        elif blacklist.remove(word):
+            text = f"✅ Removed from blacklist: <code>{word}</code>"
+        else:
+            text = f"⚠️ Not in blacklist: <code>{word}</code>"
+        httpx.post(f"{self._base}/sendMessage", json={
+            "chat_id": self._chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+        }, timeout=httpx.Timeout(20.0, connect=10.0))
+
+    def _set_maxage(self, arg: str) -> None:
+        try:
+            minutes = int(arg)
+            if minutes < 1:
+                raise ValueError
+            filter_config.set_max_age(minutes)
+            text = f"✅ Max job age set to <b>{minutes} min</b>"
+        except ValueError:
+            text = f"Usage: /maxage &lt;minutes&gt;\nCurrent: <b>{filter_config.max_age_minutes} min</b>"
+        httpx.post(f"{self._base}/sendMessage", json={
+            "chat_id": self._chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+        }, timeout=httpx.Timeout(20.0, connect=10.0))
+
     def _add_exclude(self, word: str) -> None:
+        word = word.lower()
         if not word:
             text = "Usage: /exclude &lt;keyword&gt;"
         elif blacklist.add(word):

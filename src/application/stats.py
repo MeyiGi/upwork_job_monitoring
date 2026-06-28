@@ -14,6 +14,7 @@ class Stats:
         self.session_blacklist = 0
         self.session_unverified_payment = 0
         self.session_bad_rating = 0
+        self.session_too_old = 0
         self.skipped_seen = 0
         # daily (persisted, resets at midnight)
         self._load()
@@ -28,12 +29,14 @@ class Stats:
                 self.day_blacklist = data.get("blacklist", 0)
                 self.day_unverified_payment = data.get("unverified_payment", 0)
                 self.day_bad_rating = data.get("bad_rating", 0)
+                self.day_too_old = data.get("too_old", 0)
                 return
         self.day_sent = 0
         self.day_zero_spend = 0
         self.day_blacklist = 0
         self.day_unverified_payment = 0
         self.day_bad_rating = 0
+        self.day_too_old = 0
 
     def _save(self):
         _FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -44,6 +47,7 @@ class Stats:
             "blacklist": self.day_blacklist,
             "unverified_payment": self.day_unverified_payment,
             "bad_rating": self.day_bad_rating,
+            "too_old": self.day_too_old,
         }))
 
     def add_sent(self):
@@ -71,6 +75,11 @@ class Stats:
         self.day_bad_rating += 1
         self._save()
 
+    def add_too_old(self):
+        self.session_too_old += 1
+        self.day_too_old += 1
+        self._save()
+
     def add_seen(self):
         self.skipped_seen += 1
 
@@ -88,17 +97,19 @@ class Stats:
             f"<code>─────────────────────</code>\n"
             f"📅  <b>Today</b> ({today})\n"
             f"{row('  sent', self.day_sent)}\n"
-            f"{row('  zero spend', self.day_zero_spend)}\n"
+            f"{row('  too old', self.day_too_old)}\n"
             f"{row('  blacklisted', self.day_blacklist)}\n"
             f"{row('  unverified pay', self.day_unverified_payment)}\n"
             f"{row('  bad rating', self.day_bad_rating)}\n"
+            f"{row('  zero spend', self.day_zero_spend)}\n"
             f"<code>─────────────────────</code>\n"
             f"🔄  <b>This session</b>\n"
             f"{row('  sent', self.session_sent)}\n"
-            f"{row('  zero spend', self.session_zero_spend)}\n"
+            f"{row('  too old', self.session_too_old)}\n"
             f"{row('  blacklisted', self.session_blacklist)}\n"
             f"{row('  unverified pay', self.session_unverified_payment)}\n"
             f"{row('  bad rating', self.session_bad_rating)}\n"
+            f"{row('  zero spend', self.session_zero_spend)}\n"
             f"{row('  already seen', self.skipped_seen)}\n"
             f"<code>─────────────────────</code>\n"
             f"⏱  uptime  <b>{h}h {m}m</b>"

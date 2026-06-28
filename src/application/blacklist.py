@@ -29,5 +29,14 @@ class BlacklistManager:
         logger.info(f"Blacklist += {word!r}")
         return True
 
+    def remove(self, word: str) -> bool:
+        word = word.strip().lower()
+        if not word or word not in self._words:
+            return False
+        self._words.remove(word)
+        self._path.write_text("\n".join(self._words) + ("\n" if self._words else ""))
+        logger.info(f"Blacklist -= {word!r}")
+        return True
+
 
 blacklist = BlacklistManager()
